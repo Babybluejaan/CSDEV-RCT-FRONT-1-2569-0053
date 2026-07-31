@@ -1,16 +1,4 @@
 <script>
-
-    import adapter from '@sveltejs/adapter-vercel';
-
-    /** @type {import('@sveltejs/kit').Config} */
-    const config = {
-        kit: {
-            adapter: adapter()
-        }
-    };
-
-    export default config;
-
     import Banana from '../assets/img/Subtract.png';
     import CursorDefault from '../assets/img/nomal.png';
     import CursorHover from '../assets/img/hover.png';
