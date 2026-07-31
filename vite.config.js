@@ -16,14 +16,5 @@ export default defineConfig({
             // See https://svelte.dev/docs/kit/adapters for more information about adapters.
             adapter: adapter()
         })
-    ],
-    server : {
-        proxy : {
-            '/api': {
-                target: 'https://recruit.cskmitl.com',
-                changeOrigin: true,
-                secure: false,
-            }
-        }
-    }
+    ]
 });

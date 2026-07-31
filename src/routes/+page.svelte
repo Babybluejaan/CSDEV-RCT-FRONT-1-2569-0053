@@ -1,273 +1,504 @@
 <script>
-  import { PUBLIC_API_URL } from '$env/static/public';
+    import Banana from '../assets/img/Subtract.png';
+    import CursorDefault from '../assets/img/nomal.png';
+    import CursorHover from '../assets/img/hover.png';
 
-  let copiedText = '';
+    let globalToastText = $state('');
+    let globalTimer;
 
-  const copyEmoji = async (char) => {
-    try {
-      await navigator.clipboard.writeText(char);
-      copiedText = char;
-      // Clear the toast message after 2 seconds
-      setTimeout(() => (copiedText = ''), 2000);
-    } catch (err) {
-      console.error('คัดลอกไม่สำเร็จ:', err);
-    }
-  };
+    const clipboard = (node, { char, onCopy }) => {
+        let currentChar = char;
 
-  const getEmojis = async () => {
-    const res = await fetch(`/api/emoji`);
-    if (!res.ok) throw new Error('โหลดข้อมูลไม่สำเร็จ');
-    return await res.json();
-  };
+        const handleClick = async () => {
+            try {
+                await navigator.clipboard.writeText(currentChar);
+                onCopy(currentChar);
+            } catch (err) {
+                console.error('Copy failed', err);
+            }
+        };
 
-  // Store the promise in a variable to use in the HTML block
-  let emojisPromise = getEmojis();
+        node.addEventListener('click', handleClick);
+
+        return {
+            update(newProps) {
+                currentChar = newProps.char;
+            },
+            destroy() {
+                node.removeEventListener('click', handleClick);
+            }
+        };
+    };
+
+    let activeCopiedId = $state(null);
+    let cardTimer;
+
+    const handleCopySuccess = (formattedText, emojiId) => {
+        activeCopiedId = emojiId;
+        globalToastText = formattedText;
+
+        clearTimeout(cardTimer);
+        clearTimeout(globalTimer);
+
+        cardTimer = setTimeout(() => {
+            activeCopiedId = null;
+        }, 1200);
+
+        globalTimer = setTimeout(() => {
+            globalToastText = '';
+        }, 1200);
+    };
+
+    const scrollToEmoji = () => {
+        document.getElementById('body-explore')?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+        });
+    };
+
+    const truncateMiddle = (str, maxLength = 8) => {
+        if (!str || str.length <= maxLength) return str;
+        
+        const charsToShow = Math.floor((maxLength - 3) / 2);
+        const front = str.slice(0, charsToShow);
+        const back = str.slice(-charsToShow);
+        
+        return `${front}...${back}`;
+    };
+
+    const fixedPositions = [
+        { x: 12, y: 28, size: 70, rotate: -10, delay: 0, duration: 3.5 }, // ซ้ายบน
+        { x: 8,  y: 55, size: 85, rotate: -15, delay: 0.5, duration: 4 },  // ซ้ายล่าง
+        { x: 82, y: 25, size: 80, rotate: 20,  delay: 0.2, duration: 3 },  // ขวาบน
+        { x: 81, y: 65, size: 70, rotate: 10,  delay: 0.8, duration: 3.8 } // ขวาล่าง
+    ];
+
+    const getEmojis = async () => {
+        const res = await fetch('/api/emoji');
+        if (!res.ok) throw new Error('Something went wrong while loading emojis.');
+
+        const emojis = await res.json();
+
+        floatingEmojis = [...emojis]
+            .sort(() => Math.random() - 0.5)
+            .slice(0, 4)
+            .map((emoji, index) => ({
+                ...emoji,
+                ...fixedPositions[index]
+            }));
+
+        return emojis;
+    };
+
+    let emojisPromise = getEmojis();
+    let floatingEmojis = $state([]);
 </script>
 
-<header class="Banana">
-  <div class="container">
-    <!-- Header content can go here -->
-  </div>
-</header>
+<div 
+    class="page-wrapper"
+    style="
+        --cursor-default: url('{CursorDefault}');
+        --cursor-hover: url('{CursorHover}');
+    "
+>
+    <header class="header">
+        <div class="container">
+            <div class="banana-logo">
+                <img src={Banana} alt="Banana Logo" />
+                <span class="banana-text">Banana</span>
+            </div>
+        </div>
+    </header>
 
-<main class="main-content">
-  <div class="hero-container">
-  
-    <span class="floating-item top-left">😎</span>
-    <span class="floating-item bottom-right">😵</span>
+    <main class="main-body">
+        <div class="app">
+            <div class="hero">
+                {#each floatingEmojis as emoji}
+                    <img
+                        class="floating-img"
+                        src="/api/emoji/{emoji.id}"
+                        alt={emoji.name}
+                        style="
+                            left: {emoji.x}%;
+                            top: {emoji.y}%;
+                            --rotate: {emoji.rotate}deg;
+                            animation-delay: {emoji.delay}s;
+                            animation-duration: {emoji.duration}s;
+                        "
+                    />
+                {/each}
 
-    <div class="content">
-      <h1 class="title">Take Banana</h1>
-      <p class="description">Copied png to use as your emoji</p>
-    </div>
+                <div class="body-content">
+                    <h1 class="title">Take Banana</h1>
+                    <p class="description">Copied png to use as your emoji</p>
+                </div>
 
-    <div class="bottom-bar">
-      <button class="emoji-button" on:click={() => copyEmoji('🍌')}>
-        Explore banana
-      </button>
-    </div>
+                <div class="button-container">
+                    <button class="button-bar" onclick={scrollToEmoji}>
+                        Explore banana
+                    </button>
+                </div>
+            </div>
 
-    <div>
-      <h2 class="text2">Explore</h2>
-    </div>
+            <div id="body-explore" class="body-explore">Explore</div>
 
-    {#if copiedText}
-      <p class="toast">คัดลอก {copiedText} ลง Clipboard แล้ว! ✨</p>
-    {/if}
+            <div class="frame-outer">
+                <div class="emoji-container">
+                    <div class="emoji-grid">
+                        {#await emojisPromise}
+                            <p class="status-msg">Loading emojis...</p>
+                        {:then emojis}
+                            {#each emojis as emoji (emoji.id)}
+                                <button
+                                    class:copied={activeCopiedId === emoji.id}
+                                    class="emoji-card" 
+                                    use:clipboard={{ 
+                                        char: `:${emoji.name}:`, 
+                                        onCopy: (text) => handleCopySuccess(text, emoji.id) 
+                                    }}
+                                >
+                                    <img src="/api/emoji/{emoji.id}" class="emoji-img" alt={emoji.name} />
+                                    {#if emoji.char}
+                                        <span class="emoji-icon">{emoji.char}</span>
+                                    {/if}
+                                    <span class="emoji-text">:{truncateMiddle(emoji.name, 8)}:</span>
+                                    
+                                    {#if activeCopiedId === emoji.id}
+                                        <span class="copy-popup">
+                                            <span class="copied-text">Copied!</span>
+                                        </span>
+                                    {/if}
+                                </button>
+                            {/each}
+                        {:catch error}
+                            <p class="status-msg error">Error: {error.message}</p>
+                        {/await}
+                    </div>
+                </div>
+            </div>
+        </div>
 
-    <div class="frame-outer">
-      <div class="emoji-grid">
-        <!-- Svelte's await block handles loading, success, and error states -->
-        {#await emojisPromise}
-          <p style="color: white; text-align: center;">Loading emojis...</p>
-        {:then emojis}
-          <!-- Assuming your API returns an array of objects like { char: '🍎', name: 'Apple' } -->
-          {#each emojis as emoji}
-            <!-- Use button instead of div for better accessibility on click elements -->
-            <button class="emoji-card" on:click={() => copyEmoji(emoji.char)}>
-            <img src="/api/emoji/{emoji.id}" class="emoji-img" alt={emoji.name} />
-              <!-- If your API returns images instead, swap this with: <img src={emoji.image_url} class="emoji-img" alt={emoji.name} /> -->
-              <span class="emoji-icon">{emoji.char}</span>
-              <span class="emoji-text">{emoji.name}</span>
-            </button>
-          {/each}
-        {:catch error}
-          <p style="color: #FF7A45; text-align: center;">Error: {error.message}</p>
-        {/await}
-      </div>
-    </div>
-  </div>
-</main>
+        {#if globalToastText}
+            <p class="toast">Copied {globalToastText} to clipboard! ✨</p>
+        {/if}
+    </main>
 
-<footer class="footer">
-  <div class="footer-content">
-    <p class="footer-text">Ⓒ Copyright 2026 CSDEV KMITL. All rights reserved.</p>
-  </div>
-</footer>
+    <footer class="footer">
+        <div class="footer-content">
+            <p class="footer-text">Ⓒ Copyright 2026 CSDEV KMITL. All rights reserved.</p>
+        </div>
+    </footer>
+</div>
 
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-  :global(body) {
-    background-color: #181818;
-    margin: 0;
-    font-family: 'Inter', sans-serif;
-  }
+    :global(body) {
+        background-color: #181818;
+        margin: 0;
+        font-family: 'Inter', sans-serif;
+    }
 
-  .hero-container {
-    position: relative;
-    max-width: 900px;
-    margin: 40px auto;
-    padding: 40px 20px;
-    text-align: center;
-  }
+    /* Page Layout */
+    .page-wrapper {
+        cursor: var(--cursor-default), auto;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
 
-  .floating-item {
-    position: absolute;
-    font-size: 40px;      
-    width: 55px;          
-    height: 55px;
-    object-fit: cover;
-    border-radius: 12px;   
-    animation: float 3s ease-in-out infinite;
-  }
+    /* Header */
+    .header {
+        width: 100%;
+        max-width: 1024px;
+        height: 72px;
+        margin: 0 auto;
+        padding: 14px 18px;
+        cursor: var(--cursor-default), auto;
+    }
 
-  .top-left {
-    top: 10%;
-    left: 10%;
-    transform: rotate(-12deg);
-  }
+    .container {
+        padding-top: 14px;
+    }
 
-  .bottom-right {
-    bottom: 80%;
-    right: 8%;
-    transform: rotate(10deg);
-    animation-delay: 1.5s;
-  }
+    .banana-logo {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        cursor: var(--cursor-hover) 8 8, pointer;
+    }
 
-  @keyframes float {
-    0% { transform: translateY(0px) rotate(0deg); }
-    50% { transform: translateY(-12px) rotate(4deg); }
-    100% { transform: translateY(0px) rotate(0deg); }
-  }
+    .banana-logo img {
+        width: 36px;
+        height: 36px;
+    }
 
-  .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 50px;
-    box-sizing: border-box; 
-  }
+    .banana-text {
+        color: aliceblue;
+        font-size: clamp(18px, 2vw, 24px);
+        font-weight: 600;
+        line-height: 100%;
+    }
 
-  .main-content {
-    min-height: calc(100vh - 140px);
-    padding-bottom: 40px;
-  }
+    /* Main Content */
+    .main-body {
+        color: #FFFFFF;
+        flex: 1;
+    }
 
-  .content {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 20px;
-    color: hsl(0, 0%, 100%);
-    text-align: center;
-  }
+    .body-content {
+        text-align: center;
+    }
 
-  .title {
-    font-size: 96px; /* Fixed 'size' to 'font-size' */
-    margin: 0;
-  }
+    .title {
+        font-weight: 600;
+        font-size: clamp(40px, 8vw, 96px);
+        line-height: 100%;
+        margin: 20px 0 10px;
+        padding: 100px 0 0;
+    }
 
-  .emoji-button {
-    background-color: #FF7A45;
-    color: hsl(0, 0%, 0%);
-    border: none;
-    padding: 10px 20px;
-    border-radius: 8px;
-    font-weight: bold;
-    cursor: pointer;
-    width: 100%;
-    max-width: 272px;
-    height: 51px;
-    font-family: 'Inter', sans-serif;
-    transition: transform 0.2s;
-  }
+    .description {
+        font-weight: 300;
+        font-size: clamp(18px, 3vw, 32px);
+        line-height: 100%;
+        margin: 0;
+        padding: 15px;
+    }
 
-  .emoji-button:hover {
-    transform: scale(1.05);
-  }
+    /* Button */
+    .button-container {
+        display: flex;
+        justify-content: center;
+        margin-top: clamp(8px, 2vw, 16px);
+        position: relative;
+        z-index: 2;
+        padding: 25px;
+    }
 
-  .bottom-bar {
-    display: flex;
-    justify-content: center;
-    margin-top: 10px;
-  }
+    .button-bar {
+        background-color: #FF7A45;
+        color: #000;
+        border: none;
+        width: clamp(180px, 25vw, 272px);
+        height: clamp(42px, 5vw, 51px);
+        padding: 0;
+        border-radius: 8px;
+        font-size: clamp(14px, 1.5vw, 16px);
+        font-weight: 700;
+        cursor: var(--cursor-hover) 8 8, pointer;
+        transition: transform 0.2s ease;
+    }
 
-  .text2 {
-    color: hsl(0, 0%, 100%);
-    text-align: center;
-    margin-top: 40px;
-  }
+    .button-bar:hover {
+        transform: scale(1.05);
+    }
 
-  .frame-outer {
-    max-width: 1024px;
-    width: 90%;                        
-    min-height: 400px;                  
-    background-color: #1F1F1F;  
-    border: 1px solid #404040;  
-    border-radius: 16px;
-    padding: 30px;
-    margin: 20px auto;                  
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-    box-sizing: border-box; 
-    overflow-y: auto; /* Allows scrolling if there are many emojis */             
-  }
+    .body-explore {
+        font-size: clamp(18px, 2vw, 24px);
+        font-weight: 600;
+        text-align: center;
+    }
 
-  .emoji-grid {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
+    /* Hero Section & Floating Emojis */
+    .hero {
+        position: relative;
+        max-width: 1200px;
+        margin: 0 auto;
+        min-height: 450px;
+        padding: 40px 0 0;
+        overflow: hidden;
+    }
 
-  .emoji-card {
-    width: 100px;                       
-    height: 100px;
-    background-color: hsl(0, 0%, 20%);
-    border: 1px solid hsl(0, 0%, 35%);
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;             
-    justify-content: center;
-    align-items: center;
-    gap: 6px;                           
-    cursor: pointer;
-    transition: all 0.2s ease;
-    padding: 8px;
-    font-family: 'Inter', sans-serif;
-  }
+    .floating-img {
+        position: absolute;
+        width: clamp(45px, 7vw, 85px);
+        height: auto;
+        object-fit: contain;
+        pointer-events: none;
+        transform: rotate(var(--rotate));
+        animation: float ease-in-out infinite;
+    }
 
-  .emoji-card:hover {
-    background-color: hsl(0, 67%, 56%);
-    transform: translateY(-4px);
-    border-color: transparent;
-  }
+    @keyframes float {
+        0%, 100% {
+            margin-top: 0;
+        }
+        50% {
+            margin-top: -20px;
+        }
+    }
 
-  .emoji-card:hover .emoji-text {
-    color: hsl(0, 0%, 0%);
-  }
+    /* Emoji Frame */
+    .frame-outer {
+        width: 100%;
+        max-width: 1024px;
+        margin: 20px auto;
+        padding: 12px;
+        background: #1F1F1F;
+        border-radius: 12px;
+        box-sizing: border-box;
+    }
 
-  .emoji-icon {
-    font-size: 32px;
-  }
+    .emoji-grid {
+        display: grid;
+        grid-template-columns: repeat(9, 1fr);
+        gap: 16px;
+        justify-items: center;
+    }
 
-  .emoji-text {
-    color: hsl(0, 0%, 100%);
-    font-size: 12px;
-    font-weight: 500;
-    text-align: center;
-  }
+    .emoji-card {
+        position: relative;
+        width: 80px;
+        height: 90px;
+        background-color: transparent;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 6px;
+        padding: 8px;
+        cursor: var(--cursor-default), auto;
+        transition: background-color 0.2s ease;
+        box-sizing: border-box;
+        min-width: 0;
+    }
 
-  .toast {
-    color: hsl(0, 67%, 56%);
-    text-align: center;
-    font-weight: bold;
-    height: 24px;
-  }
+    .emoji-card:hover {
+        background-color: #333333;
+        cursor: var(--cursor-hover) 8 8, pointer;
+    }
 
-  .footer {
-    background-color: hsl(0, 0%, 10%);
-    color: #8D8D8D;
-    padding: 20px;
-    text-align: center;
-  }
+    .emoji-img {
+        width: 54px;
+        height: 54px;
+        object-fit: contain;
+        border-radius: 2px;
+    }
 
-  .footer-text {
-    margin: 0;
-  }
-  
-  .emoji-img {
-    width: 40px;          
-    height: 40px;         
-    object-fit: contain;
-  }
+    .emoji-icon {
+        font-size: 32px;
+    }
+
+    .emoji-text {
+        color: #FFFFFF;
+        font-size: 12px;
+        font-weight: 400;
+        text-align: center;
+        width: 100%;
+        white-space: nowrap;
+    }
+
+    .copy-popup {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.75);
+        color: white;
+        z-index: 10;
+        border-radius: 8px;
+    }
+
+    .copied-text {
+        animation: copiedSlideDown 0.1s ease-out;
+    }
+
+    @keyframes copiedSlideDown {
+        0% {
+            opacity: 0;
+            transform: translateY(-25px);
+        }
+        70% {
+            opacity: 1;
+            transform: translateY(5px);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .status-msg {
+        color: white;
+        text-align: center;
+        grid-column: 1 / -1;
+    }
+
+    .status-msg.error {
+        color: #FF7A45;
+    }
+
+    .toast {
+        color: #FF5A5A;
+        text-align: center;
+        font-weight: bold;
+        height: 24px;
+    }
+
+    /* Footer */
+    .footer {
+        cursor: var(--cursor-default), auto;
+    }
+
+    .footer-content {
+        background-color: #1D1D1D;
+        padding: 16px;
+    }
+
+    .footer-text {
+        color: #8D8D8D;
+        margin: 0 auto;
+        text-align: center;
+        padding: 16px;
+        font-size: clamp(12px, 1.5vw, 14px);
+        cursor: var(--cursor-default), auto;
+        user-select: none;
+    }
+
+    .footer-text:hover {
+        cursor: var(--cursor-hover) 8 8, pointer;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 1100px) {
+        .frame-outer {
+            width: 90%;
+        }
+
+        .emoji-grid {
+            grid-template-columns: repeat(5, 1fr);
+        }
+    }
+
+    @media (max-width: 600px) {
+        .emoji-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .title {
+            font-size: 48px;
+            padding-top: 60px;
+        }
+
+        .description {
+            font-size: 20px;
+        }
+
+        .hero {
+            min-height: 350px;
+        }
+
+        .floating-img {
+            width: clamp(35px, 12vw, 60px);
+        }
+
+        .button-bar {
+            border-radius: 6px;
+        }
+    }
 </style>
